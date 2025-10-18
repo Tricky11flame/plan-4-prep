@@ -5,6 +5,7 @@ import TestView from './components/TestView';
 import ResultsView from './components/ResultsView';
 import Notification from './components/Notification';
 import type { StudyMaterial, TestSession, NotificationState, Question } from './types';
+import { db } from './db'; // Import your new db file
 
 // Helper function to shuffle an array
 const shuffleArray = <T,>(array: T[]): T[] => {
@@ -16,9 +17,10 @@ const shuffleArray = <T,>(array: T[]): T[] => {
   return newArray;
 };
 
-const COURSE_STORAGE_KEY = 'studyToolCourseProgress';
+// const COURSE_STORAGE_KEY = 'studyToolCourseProgress';
 
 export default function App() {
+  
   const [view, setView] = useState<'setup' | 'test' | 'results'>('setup');
   const [studyMaterials, setStudyMaterials] = useState<StudyMaterial[]>([]);
   const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
@@ -26,25 +28,90 @@ export default function App() {
   const [savedCourse, setSavedCourse] = useState<TestSession | null>(null);
   const [notification, setNotification] = useState<NotificationState | null>(null);
 
+  // useEffect(() => {
+  //   try {
+  //     const savedStateJSON = localStorage.getItem(COURSE_STORAGE_KEY);
+  //     if (savedStateJSON) setSavedCourse(JSON.parse(savedStateJSON));
+  //   } catch (error) {
+  //     console.error("Failed to parse saved course from localStorage", error);
+  //   }
+  // }, []);
+  // MODIFIED: Load *everything* from IndexedDB on startup
   useEffect(() => {
-    try {
-      const savedStateJSON = localStorage.getItem(COURSE_STORAGE_KEY);
-      if (savedStateJSON) setSavedCourse(JSON.parse(savedStateJSON));
-    } catch (error) {
-      console.error("Failed to parse saved course from localStorage", error);
-    }
-  }, []);
-  
-  useEffect(() => {
+    const loadData = async () => {
+      // Load materials (your existing code)
+      const allMaterials = await db.materials.toArray();
+      setStudyMaterials(allMaterials);
+
+      // REPLACED: localStorage.getItem()
+      const saved = await db.savedCourses.get(1); // Get the course with id 1
+      if (saved) {
+        setSavedCourse(saved.session);
+      }
+    };
+    
+    loadData();
+  }, []); // Runs once on load
+
+  /*useEffect(() => {
     if (currentTest?.mode === 'course') {
       localStorage.setItem(COURSE_STORAGE_KEY, JSON.stringify(currentTest));
     }
   }, [currentTest]);
+  */
 
   const showNotification = (message: string, type: NotificationState['type'] = 'error') => {
     setNotification({ message, type });
   };
 
+  // MODIFIED: Save course progress to IndexedDB
+  useEffect(() => {
+    const saveProgress = async () => {
+      if (currentTest?.mode === 'course') {
+        // REPLACED: localStorage.setItem()
+        // .put() will add OR update the item with id 1
+        await db.savedCourses.put({ id: 1, session: currentTest });
+      }
+    };
+    saveProgress();
+  }, [currentTest]);
+
+  // MODIFIED: handleFileSelect now adds to IndexedDB
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files?.length) return;
+    let filesAddedCount = 0;
+    const newMaterialsList: StudyMaterial[] = [];
+    for (const file of files) {
+      const name = file.name.replace(/\.json$/, '');
+      // Check if it already exists in the DB
+      const existing = await db.materials.get(name);
+      if (existing) {
+        showNotification(`Material "${name}" is already loaded.`, 'info');
+        continue;
+      }
+      // ... (your existing try/catch block)
+      try {
+        const content = await file.text();
+        const questions: Question[] = JSON.parse(content);
+        // ... (your validation)
+        const newMaterial = { name, questions };
+        // Add to our database
+        await db.materials.add(newMaterial); 
+        newMaterialsList.push(newMaterial);
+        filesAddedCount++;
+      } catch (error) {
+        showNotification(`Error in "${file.name}": ${(error as Error).message}`);
+      }
+    }
+    if (filesAddedCount > 0) {
+      // Add the new materials to the *existing* state
+      setStudyMaterials(prev => [...prev, ...newMaterialsList]);
+      showNotification(`${filesAddedCount} material(s) loaded successfully.`, 'success');
+    }
+    event.target.value = '';
+  };
+  /*
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files?.length) return;
@@ -78,12 +145,21 @@ export default function App() {
     }
     event.target.value = '';
   };
-  
+  */
+  // MODIFIED: handleDeleteMaterial now deletes from IndexedDB
+  const handleDeleteMaterial = async (nameToDelete: string) => {
+    // Delete from the database
+    await db.materials.delete(nameToDelete);
+    // Remove from React state
+    setStudyMaterials(prev => prev.filter(m => m.name !== nameToDelete));
+    setSelectedMaterials(prev => prev.filter(name => name !== nameToDelete));
+  };
+  /*
   const handleDeleteMaterial = (nameToDelete: string) => {
     setStudyMaterials(prev => prev.filter(m => m.name !== nameToDelete));
     setSelectedMaterials(prev => prev.filter(name => name !== nameToDelete));
   };
-  
+  */
   const handleToggleMaterial = (name: string) => {
     setSelectedMaterials(prev => prev.includes(name) ? prev.filter(m => m !== name) : [...prev, name]);
   };
@@ -129,8 +205,9 @@ export default function App() {
     }
   };
   
-  const clearCourseProgress = () => {
-    localStorage.removeItem(COURSE_STORAGE_KEY);
+  const clearCourseProgress = async () => { // Make it async
+    // REPLACED: localStorage.removeItem()
+    await db.savedCourses.delete(1); // Delete the course with id 1
     setSavedCourse(null);
   };
 
@@ -141,10 +218,11 @@ export default function App() {
     }
   };
   
-  const handleEndTest = () => {
+  const handleEndTest = async () => { // Make it async
     setView('setup');
-    const savedStateJSON = localStorage.getItem(COURSE_STORAGE_KEY);
-    setSavedCourse(savedStateJSON ? JSON.parse(savedStateJSON) : null);
+    // REPLACED: localStorage.getItem()
+    const saved = await db.savedCourses.get(1);
+    setSavedCourse(saved ? saved.session : null);
   };
   
   const renderView = () => {

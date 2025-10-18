@@ -54,7 +54,7 @@ export default function TestView({ test, onNextQuestion, onEndTest }: TestViewPr
         ) : (
           <button
             onClick={onNextQuestion}
-            className="px-8 py-3 w-48 bg-indigo-600 text-white font-bold rounded-md shadow-sm hover:bg-indigo-700"
+            className="px-8 py-3 w-48 bg-blue-500 border-black border-[1.5pt] text-white font-bold rounded-md shadow-sm hover:bg-blue-700"
           >
             Next Question
           </button>

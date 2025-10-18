@@ -13,7 +13,8 @@ export default function Sidebar({ materials, selectedMaterials, onFileSelect, on
   return (
     <aside className="w-full lg:w-1/3 xl:w-1/4 p-6 bg-white border-[1.5pt] border-black flex flex-col"> 
       <div className='my-4'></div>
-      <h1 className="text-2xl font-extrabold text-gray-900 mb-1  "><span className='text-4xl text-blue-500'>@Plan<span className='text-red-500'>4</span>Prepp.</span></h1>
+      <h1 className="text-2xl text-gray-900 mb-1  font-mono ">
+        <div className='text-4xl text-blue-500'><img src="../../my-logo.png" alt="P4P Logo" className="h-14  bg-black rounded-full p-1 mb-4 mx-4"/>@plan<span className='text-red-500'>4</span>prepp.</div> </h1>
       <p className="text-gray-500 font-mono mb-6">Load, select, and test your knowledge.</p>
 
       <div className="mb-6">
@@ -46,7 +47,7 @@ export default function Sidebar({ materials, selectedMaterials, onFileSelect, on
                     onChange={() => onToggleMaterial(material.name)}
                     className="h-4 w-4 text-indigo-600 border-black border-2 rounded focus:blue-500"
                   />
-                  <label htmlFor={material.name} className="ml-3 block text-sm font-medium text-gray-700">
+                  <label htmlFor={material.name} className="ml-3 block text-sm font-medium text-gray-700 font-mono">
                     {material.name} ({material.questions.length} Qs)
                   </label>
                 </div>
