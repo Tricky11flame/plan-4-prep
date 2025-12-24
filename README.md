@@ -26,7 +26,6 @@ Use your preferred AI (Gemini, ChatGPT, Claude) to create a quiz in JSON format.
 * The module will appear under the **Select Materials** list on the sidebar.
 
 ### 3. Practice
-
 * **Full Course:** Select a module and click **Resume Course** or **Start New** to iterate through all questions.
 * **Random Test:** Enter a specific number of questions in the **Generate a Random Test** field and click **Start Random Test**.
 
